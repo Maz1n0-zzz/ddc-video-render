@@ -26,6 +26,8 @@ jobs:
           s={'9:16':'1080:1920','16:9':'1920:1080','1:1':'1080:1080'}[j.get('ratio','9:16')]
           p.Path('w/meta.sh').write_text('SIZE=%s\nN=%d\nNAME=%s\n'%(s,len(j['clips']),j['id']))
           PY
+      - name: Cai ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
       - name: Ghep va long tieng
         id: r
         run: |
