@@ -1,0 +1,65 @@
+name: DDC TTS thu
+on:
+  push:
+    paths: ['tts/**.json']
+permissions:
+  contents: write
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 2}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Cai cong cu
+        run: |
+          set -e
+          sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          pip install -q edge-tts==6.1.12 piper-tts==1.2.0
+          mkdir -p piper
+          curl -sSL -o piper/vi.onnx "https://huggingface.co/rhasspy/piper-voices/resolve/main/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx"
+          curl -sSL -o piper/vi.onnx.json "https://huggingface.co/rhasspy/piper-voices/resolve/main/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx.json"
+      - name: Sinh giong va ghep thu
+        run: |
+          set -e
+          JOB=$(git show --pretty= --name-only ${{ github.sha }} | grep -E '^tts/.*\.json$' | tail -n1)
+          python3 - "$JOB" <<'PY'
+          import json,sys,pathlib
+          j=json.load(open(sys.argv[1],encoding='utf-8'))
+          pathlib.Path('w').mkdir(exist_ok=True)
+          pathlib.Path('w/text.txt').write_text(j['text'],encoding='utf-8')
+          pathlib.Path('w/meta.sh').write_text('NAME=%s\nVIDEO=%s\n'%(j['id'],j.get('video','')))
+          PY
+          . w/meta.sh
+          mkdir -p tts_out
+          edge-tts --voice vi-VN-HoaiMyNeural -f w/text.txt --write-media "tts_out/$NAME-A-hoaimy-nu.mp3"
+          edge-tts --voice vi-VN-NamMinhNeural -f w/text.txt --write-media "tts_out/$NAME-B-namminh-nam.mp3"
+          piper --model piper/vi.onnx --output_file w/piper.wav < w/text.txt
+          ffmpeg -y -loglevel error -i w/piper.wav -c:a libmp3lame -b:a 128k "tts_out/$NAME-C-piper-nu.mp3"
+          for f in tts_out/$NAME-*.mp3; do echo "- $f: $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f") s" >> $GITHUB_STEP_SUMMARY; done
+          if [ -n "$VIDEO" ]; then
+            curl -sSL -o w/v.mp4 "$VIDEO"
+            for k in A-hoaimy-nu B-namminh-nam C-piper-nu; do
+              V=$(ffprobe -v error -show_entries format=duration -of csv=p=0 w/v.mp4)
+              A=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "tts_out/$NAME-$k.mp3")
+              T=$(awk -v a="$A" -v v="$V" 'BEGIN{printf "%.3f", (a>v?a:v)}')
+              ffmpeg -y -loglevel error -i w/v.mp4 -i "tts_out/$NAME-$k.mp3" -filter_complex "[1:a]apad=whole_dur=$T[a]" -map 0:v:0 -map "[a]" -c:v copy -c:a aac -b:a 192k -t $T "tts_out/$NAME-$k.mp4"
+            done
+          fi
+          ls -la tts_out
+      - name: Luu ket qua
+        run: |
+          set -e
+          git config user.name ddc-render-bot
+          git config user.email actions@github.com
+          git add tts_out
+          if git diff --cached --quiet; then echo "khong co gi"; exit 0; fi
+          git commit -m "tts thu"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git push; then ok=1; break; fi
+            git pull --rebase --autostash || true
+          done
+          [ "$ok" = "1" ] || { echo "KHONG PUSH DUOC"; exit 1; }
