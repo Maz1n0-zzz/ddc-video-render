@@ -41,8 +41,22 @@ jobs:
             echo "file '$o'" >> l.txt
           done
           ffmpeg -y -f concat -safe 0 -i l.txt -c copy s.mp4
-          if [ -f vo.mp3 ]; then ffmpeg -y -i s.mp4 -i vo.mp3 -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest f.mp4; else cp s.mp4 f.mp4; fi
+          if [ -f vo.mp3 ]; then
+            VD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 s.mp4)
+            AD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 vo.mp3)
+            PAD=$(awk -v a="$AD" -v v="$VD" 'BEGIN{d=a-v; if(d<0.05)d=0; printf "%.3f", d}')
+            echo "hinh $VD s | giong doc $AD s | keo dai them $PAD s" >> $GITHUB_STEP_SUMMARY
+            if [ "$PAD" = "0.000" ]; then
+              ffmpeg -y -i s.mp4 -i vo.mp3 -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest f.mp4
+            else
+              awk -v p="$PAD" 'BEGIN{if(p>2.0) print "CANH BAO: giong doc dai hon hinh hon 2 giay, canh cuoi bi dung hinh lau. Nen tang thoi luong canh trong storyboard."}' >> $GITHUB_STEP_SUMMARY
+              ffmpeg -y -i s.mp4 -i vo.mp3 -filter_complex "[0:v]tpad=stop_mode=clone:stop_duration=$PAD[v]" -map "[v]" -map 1:a:0 -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest f.mp4
+            fi
+          else
+            cp s.mp4 f.mp4
+          fi
           cd ..; mkdir -p renders; cp w/f.mp4 "renders/$NAME.mp4"
+          ffprobe -v error -show_entries format=duration -of csv=p=0 "renders/$NAME.mp4"
           echo "out=renders/$NAME.mp4" >> $GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
         with: {name: ddc-video, path: '${{ steps.r.outputs.out }}'}
@@ -52,4 +66,4 @@ jobs:
           git config user.name ddc-render-bot
           git config user.email actions@github.com
           git add renders && git commit -m "render: $NAME" && git push || echo "khong co gi de commit"
-          echo "Video: renders/$NAME.mp4" >> $GITHUB_STEP_SUMMARY
+          echo "Video: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/renders/$NAME.mp4" >> $GITHUB_STEP_SUMMARY
