@@ -1,0 +1,16 @@
+job=tts/20260916-vo-thu2.json
+edge-tts 7.2.8
+[0;93m2026-09-16 16:15:13.721337376 [W:onnxruntime:Default, device_discovery.cc:146 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+A-hoaimy-nu: giong 17.280000 s
+B-namminh-nam: giong 17.496000 s
+C-piper-nu: giong 11.650612 s
+total 48540
+drwxr-xr-x  2 runner runner     4096 Sep 16 16:15 .
+drwxr-xr-x 10 runner runner     4096 Sep 16 16:15 ..
+-rw-r--r--  1 runner runner   103680 Sep 16 16:15 20260916-vo-thu2-A-hoaimy-nu.mp3
+-rw-r--r--  1 runner runner 16434446 Sep 16 16:15 20260916-vo-thu2-A-hoaimy-nu.mp4
+-rw-r--r--  1 runner runner   104976 Sep 16 16:15 20260916-vo-thu2-B-namminh-nam.mp3
+-rw-r--r--  1 runner runner 16440718 Sep 16 16:15 20260916-vo-thu2-B-namminh-nam.mp4
+-rw-r--r--  1 runner runner   186871 Sep 16 16:15 20260916-vo-thu2-C-piper-nu.mp3
+-rw-r--r--  1 runner runner 16408793 Sep 16 16:15 20260916-vo-thu2-C-piper-nu.mp4
+-rw-r--r--  1 runner runner      508 Sep 16 16:15 20260916-vo-thu2-log.txt
