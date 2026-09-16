@@ -8,6 +8,7 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 2}
@@ -45,12 +46,13 @@ jobs:
             VD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 s.mp4)
             AD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 vo.mp3)
             PAD=$(awk -v a="$AD" -v v="$VD" 'BEGIN{d=a-v; if(d<0.05)d=0; printf "%.3f", d}')
-            echo "hinh $VD s | giong doc $AD s | keo dai hinh them $PAD s" >> $GITHUB_STEP_SUMMARY
+            T=$(awk -v a="$AD" -v v="$VD" 'BEGIN{printf "%.3f", (a>v?a:v)}')
+            echo "hinh $VD s | giong doc $AD s | keo dai hinh them $PAD s | video ra $T s" >> $GITHUB_STEP_SUMMARY
             if [ "$PAD" = "0.000" ]; then
-              ffmpeg -y -i s.mp4 -i vo.mp3 -filter_complex "[1:a]apad[a]" -map 0:v:0 -map "[a]" -c:v copy -c:a aac -b:a 192k -shortest f.mp4
+              ffmpeg -y -i s.mp4 -i vo.mp3 -filter_complex "[1:a]apad=whole_dur=$T[a]" -map 0:v:0 -map "[a]" -c:v copy -c:a aac -b:a 192k -t $T f.mp4
             else
               awk -v p="$PAD" 'BEGIN{if(p>2.0) print "CANH BAO: giong doc dai hon hinh hon 2 giay, canh cuoi bi dung hinh lau. Nen tang thoi luong canh trong storyboard."}' >> $GITHUB_STEP_SUMMARY
-              ffmpeg -y -i s.mp4 -i vo.mp3 -filter_complex "[0:v]tpad=stop_mode=clone:stop_duration=$PAD[v];[1:a]apad[a]" -map "[v]" -map "[a]" -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest f.mp4
+              ffmpeg -y -i s.mp4 -i vo.mp3 -filter_complex "[0:v]tpad=stop_mode=clone:stop_duration=$PAD[v];[1:a]apad=whole_dur=$T[a]" -map "[v]" -map "[a]" -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -t $T f.mp4
             fi
             FD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 f.mp4)
             awk -v f="$FD" -v v="$VD" 'BEGIN{ if (f < v-0.25) { print "LOI: video ra ("f"s) ngan hon tong hinh ("v"s), bi cat mat."; exit 1 } }'
