@@ -62,8 +62,18 @@ jobs:
         with: {name: ddc-video, path: '${{ steps.r.outputs.out }}'}
       - name: Luu ket qua
         run: |
+          set -e
           . w/meta.sh
           git config user.name ddc-render-bot
           git config user.email actions@github.com
-          git add renders && git commit -m "render: $NAME" && git push || echo "khong co gi de commit"
+          git add renders
+          if git diff --cached --quiet; then echo "Khong co file moi de commit"; exit 0; fi
+          git commit -m "render: $NAME"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git push; then ok=1; break; fi
+            echo "Push lan $i that bai, dong bo lai roi thu lai"
+            git pull --rebase --autostash || true
+          done
+          if [ "$ok" != "1" ]; then echo "KHONG PUSH DUOC VIDEO LEN REPO"; exit 1; fi
           echo "Video: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/renders/$NAME.mp4" >> $GITHUB_STEP_SUMMARY
