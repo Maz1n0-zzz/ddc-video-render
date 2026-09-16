@@ -12,7 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 2}
-      - name: Tai clip va voice
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Tai clip va loi doc
         run: |
           set -e
           JOB=$(git show --pretty= --name-only ${{ github.sha }} | grep -E '^jobs/.*\.json$' | tail -n1)
@@ -24,11 +26,16 @@ jobs:
           p.Path('w').mkdir(exist_ok=True)
           for i,c in enumerate(j['clips']): u.urlretrieve(c,'w/c%02d.mp4'%i)
           if j.get('audio'): u.urlretrieve(j['audio'],'w/vo.mp3')
+          elif j.get('vo_text'):
+              p.Path('w/vo.txt').write_text(j['vo_text'],encoding='utf-8')
+              p.Path('w/voice.txt').write_text(j.get('voice') or 'vi-VN-HoaiMyNeural')
           s={'9:16':'1080:1920','16:9':'1920:1080','1:1':'1080:1080'}[j.get('ratio','9:16')]
           p.Path('w/meta.sh').write_text('SIZE=%s\nN=%d\nNAME=%s\n'%(s,len(j['clips']),j['id']))
           PY
-      - name: Cai ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - name: Cai ffmpeg va edge-tts
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+          pip install -q "edge-tts>=7.0"
       - name: Ghep va long tieng
         id: r
         run: |
@@ -42,8 +49,20 @@ jobs:
             echo "file '$o'" >> l.txt
           done
           ffmpeg -y -f concat -safe 0 -i l.txt -c copy s.mp4
+          VD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 s.mp4)
+          if [ ! -f vo.mp3 ] && [ -f vo.txt ]; then
+            VOICE=$(cat voice.txt)
+            ok=0
+            for t in 1 2 3; do edge-tts --voice "$VOICE" -f vo.txt --write-media vo0.mp3 && ok=1 && break; sleep 5; done
+            [ "$ok" = "1" ] || { echo "LOI: khong sinh duoc giong $VOICE"; exit 1; }
+            A0=$(ffprobe -v error -show_entries format=duration -of csv=p=0 vo0.mp3)
+            RATE=$(awk -v a="$A0" -v v="$VD" 'BEGIN{t=v-0.5; r=(a/t-1)*100; if(r<-20)r=-20; if(r>10)r=10; printf "%+d", r}')
+            ok=0
+            for t in 1 2 3; do edge-tts --voice "$VOICE" --rate="${RATE}%" -f vo.txt --write-media vo.mp3 && ok=1 && break; sleep 5; done
+            [ "$ok" = "1" ] || cp vo0.mp3 vo.mp3
+            echo "giong $VOICE | doc tu nhien $A0 s | chinh toc do ${RATE}% cho vua $VD s hinh" >> $GITHUB_STEP_SUMMARY
+          fi
           if [ -f vo.mp3 ]; then
-            VD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 s.mp4)
             AD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 vo.mp3)
             PAD=$(awk -v a="$AD" -v v="$VD" 'BEGIN{d=a-v; if(d<0.05)d=0; printf "%.3f", d}')
             T=$(awk -v a="$AD" -v v="$VD" 'BEGIN{printf "%.3f", (a>v?a:v)}')
@@ -51,7 +70,7 @@ jobs:
             if [ "$PAD" = "0.000" ]; then
               ffmpeg -y -i s.mp4 -i vo.mp3 -filter_complex "[1:a]apad=whole_dur=$T[a]" -map 0:v:0 -map "[a]" -c:v copy -c:a aac -b:a 192k -t $T f.mp4
             else
-              awk -v p="$PAD" 'BEGIN{if(p>2.0) print "CANH BAO: giong doc dai hon hinh hon 2 giay, canh cuoi bi dung hinh lau. Nen tang thoi luong canh trong storyboard."}' >> $GITHUB_STEP_SUMMARY
+              awk -v p="$PAD" 'BEGIN{if(p>2.0) print "CANH BAO: giong doc dai hon hinh hon 2 giay, canh cuoi bi dung hinh lau."}' >> $GITHUB_STEP_SUMMARY
               ffmpeg -y -i s.mp4 -i vo.mp3 -filter_complex "[0:v]tpad=stop_mode=clone:stop_duration=$PAD[v];[1:a]apad=whole_dur=$T[a]" -map "[v]" -map "[a]" -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -t $T f.mp4
             fi
             FD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 f.mp4)
@@ -61,7 +80,6 @@ jobs:
             cp s.mp4 f.mp4
           fi
           cd ..; mkdir -p renders; cp w/f.mp4 "renders/$NAME.mp4"
-          ffprobe -v error -show_entries format=duration -of csv=p=0 "renders/$NAME.mp4"
           echo "out=renders/$NAME.mp4" >> $GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
         with: {name: ddc-video, path: '${{ steps.r.outputs.out }}'}
