@@ -62,6 +62,15 @@ jobs:
             [ "$ok" = "1" ] || cp vo0.mp3 vo.mp3
             echo "giong $VOICE | doc tu nhien $A0 s | chinh toc do ${RATE}% cho vua $VD s hinh" >> $GITHUB_STEP_SUMMARY
           fi
+          if [ -f vo.mp3 ] && [ ! -f vo.txt ]; then
+            A0=$(ffprobe -v error -show_entries format=duration -of csv=p=0 vo.mp3)
+            TEMPO=$(awk -v a="$A0" -v v="$VD" 'BEGIN{t=v-1.0; r=a/t; if(r>0.97 && r<1.0)r=1; if(r<0.92)r=0.92; if(r>1.15)r=1.15; printf "%.3f", r}')
+            if [ "$TEMPO" != "1.000" ]; then
+              ffmpeg -y -i vo.mp3 -af "atempo=$TEMPO" -c:a libmp3lame -b:a 192k vo_fit.mp3 && mv vo_fit.mp3 vo.mp3
+            fi
+            ffmpeg -y -i vo.mp3 -af "loudnorm=I=-16:TP=-1.5:LRA=11" -ar 44100 -c:a libmp3lame -b:a 192k vo_n.mp3 && mv vo_n.mp3 vo.mp3
+            echo "giong file | goc $A0 s | chinh toc do x$TEMPO cho vua $VD s hinh | chuan hoa am luong -16 LUFS" >> $GITHUB_STEP_SUMMARY
+          fi
           if [ -f vo.mp3 ]; then
             AD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 vo.mp3)
             PAD=$(awk -v a="$AD" -v v="$VD" 'BEGIN{d=a-v; if(d<0.05)d=0; printf "%.3f", d}')
