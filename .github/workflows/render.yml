@@ -24,7 +24,16 @@ jobs:
           import json,sys,pathlib as p,urllib.request as u
           j=json.load(open(sys.argv[1],encoding='utf-8'))
           p.Path('w').mkdir(exist_ok=True)
-          for i,c in enumerate(j['clips']): u.urlretrieve(c,'w/c%02d.mp4'%i)
+          lines=[]
+          for i,c in enumerate(j['clips']):
+              if isinstance(c,dict) and c.get('image'):
+                  u.urlretrieve(c['image'],'w/i%02d.jpg'%i)
+                  lines.append('img i%02d.jpg %s %s'%(i,float(c.get('dur',5)),c.get('move','push_in')))
+              else:
+                  url=c['video'] if isinstance(c,dict) else c
+                  u.urlretrieve(url,'w/c%02d.mp4'%i)
+                  lines.append('vid c%02d.mp4'%i)
+          p.Path('w/list.txt').write_text(chr(10).join(lines)+chr(10))
           if j.get('audio'): u.urlretrieve(j['audio'],'w/vo.mp3')
           elif j.get('vo_text'):
               p.Path('w/vo.txt').write_text(j['vo_text'],encoding='utf-8')
@@ -43,11 +52,28 @@ jobs:
           . w/meta.sh
           W=${SIZE%%:*}; H=${SIZE##*:}
           cd w; : > l.txt
-          for i in $(seq 0 $((N-1))); do
-            f=$(printf c%02d.mp4 $i); o=$(printf n%02d.mp4 $i)
-            ffmpeg -y -i $f -vf "scale=$W:$H:force_original_aspect_ratio=decrease,pad=$W:$H:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30" -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -an $o
+          i=0
+          while read -r kind f d mv; do
+            [ -n "$kind" ] || continue
+            o=$(printf n%02d.mp4 $i)
+            if [ "$kind" = "img" ]; then
+              F=$(awk -v d="$d" 'BEGIN{printf "%d", d*30}')
+              case "$mv" in
+                pull_out)   Z="1.08-0.08*on/$F"; X="(iw-iw/zoom)/2"; Y="(ih-ih/zoom)/2" ;;
+                tilt_up)    Z="1.08"; X="(iw-iw/zoom)/2"; Y="(ih-ih/zoom)*(1-on/$F)" ;;
+                tilt_down)  Z="1.08"; X="(iw-iw/zoom)/2"; Y="(ih-ih/zoom)*on/$F" ;;
+                pan_left)   Z="1.08"; X="(iw-iw/zoom)*(1-on/$F)"; Y="(ih-ih/zoom)/2" ;;
+                pan_right)  Z="1.08"; X="(iw-iw/zoom)*on/$F"; Y="(ih-ih/zoom)/2" ;;
+                *)          Z="1+0.08*on/$F"; X="(iw-iw/zoom)/2"; Y="(ih-ih/zoom)/2" ;;
+              esac
+              ffmpeg -nostdin -y -loop 1 -framerate 30 -i $f -vf "scale=$((W*4)):$((H*4)):force_original_aspect_ratio=increase:flags=lanczos,crop=$((W*4)):$((H*4)),zoompan=z='$Z':x='$X':y='$Y':d=1:s=${W}x${H}:fps=30,setsar=1,scale=out_range=tv,format=yuv420p" -frames:v $F -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -color_range tv -an $o
+              echo "canh $((i+1)): anh tinh $mv ${d}s" >> $GITHUB_STEP_SUMMARY
+            else
+              ffmpeg -nostdin -y -i $f -vf "scale=$W:$H:force_original_aspect_ratio=decrease,pad=$W:$H:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30" -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -an $o
+            fi
             echo "file '$o'" >> l.txt
-          done
+            i=$((i+1))
+          done < list.txt
           ffmpeg -y -f concat -safe 0 -i l.txt -c copy s.mp4
           VD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 s.mp4)
           if [ ! -f vo.mp3 ] && [ -f vo.txt ]; then
