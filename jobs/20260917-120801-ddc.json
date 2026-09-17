@@ -1,0 +1,44 @@
+{
+  "id": "20260917-120801-ddc",
+  "ratio": "9:16",
+  "clips": [
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/chat_session/2026-09/17/187813163704545280/43b1a79cfb5c415c947c8b70714ae172.jpg",
+      "dur": 4,
+      "move": "tilt_up"
+    },
+    "https://app-cdn.evose.ai/public/177279659581403136/image_generation/7e4da0d58eae42049131cf29d9786680.mp4",
+    "https://app-cdn.evose.ai/public/177279659581403136/image_generation/e01bfb75f2fd4133ab156e76f5791343.mp4",
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/chat_session/2026-09/17/187813163704545280/df37175a4b724377b157d86bd991e734.jpg",
+      "dur": 4,
+      "move": "push_in"
+    },
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/image_generation/5112f89487c14139a116214dd490ab31.jpeg",
+      "dur": 4,
+      "move": "pan_left"
+    },
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/chat_session/2026-09/17/187813163704545280/cb3929538e2449bcbb19242bcf5b9354.jpg",
+      "dur": 4,
+      "move": "push_in"
+    },
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/chat_session/2026-09/17/187813163704545280/6de52205d2254f5c9e1fd0b95d6985b1.jpg",
+      "dur": 4,
+      "move": "pull_out"
+    },
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/image_generation/fcb74c214172434b9060c09d5f50b781.jpeg",
+      "dur": 4,
+      "move": "tilt_down"
+    },
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/image_generation/9cdd16183ae44b449725aea20ebcc4bc.png",
+      "dur": 6,
+      "move": "push_in"
+    }
+  ],
+  "audio": "https://app-cdn.evose.ai/public/177279659581403136/workflow/382b6010f58a483392f02d4f850db8cd.mp3"
+}
