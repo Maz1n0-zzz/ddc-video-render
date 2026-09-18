@@ -1,0 +1,21 @@
+{
+  "id": "20260918-195232-ddc",
+  "ratio": "9:16",
+  "clips": [
+    "https://app-cdn.evose.ai/public/177279659581403136/image_generation/229f95135de2493e859af8fcc599fdaf.mp4",
+    "https://app-cdn.evose.ai/public/177279659581403136/image_generation/e223dfb299514636b519f02b812cc3f5.mp4",
+    "https://app-cdn.evose.ai/public/177279659581403136/image_generation/3856a33c0b2e4b6c8fd0e803a6b7a729.mp4",
+    "https://app-cdn.evose.ai/public/177279659581403136/image_generation/2252d7acd3244fb8aae49874a8779a14.mp4",
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/image_generation/aec2ea7e0f254f1aa8c279574a7ca018.png",
+      "dur": 4,
+      "move": "pull_out"
+    },
+    {
+      "image": "https://app-cdn.evose.ai/public/177279659581403136/image_generation/537ad43162a54df88bf1674d5fcc8fc3.jpeg",
+      "dur": 6,
+      "move": "push_in"
+    }
+  ],
+  "audio": "https://app-cdn.evose.ai/public/177279659581403136/workflow/35d2c94cbfb94ae28974edd855a252a5.mp3"
+}
